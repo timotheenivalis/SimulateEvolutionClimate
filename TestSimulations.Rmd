@@ -1,0 +1,399 @@
+---
+title: "Test Simulations"
+author: "Timothee Bonnet"
+header-includes:
+   - \usepackage{amsmath}
+date: "09/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+set.seed(123)
+library(pedantics)
+library(MCMCglmm)
+```
+
+
+Load the simulation functions
+```{r}
+source("FunctionSimuls.R")
+```
+
+The main function you need to use is `main_simul()`. Its arguments are:
+
+* `start=1980` The year in which the simulation starts
+* `end=2000` The year in which it ends
+* `maturity=1` Age of sexual maturity
+* `baserepro=2` Controls the baseline of annual reproductive success
+* `reprovarf=1` Controls the heterogeneity in reproductive success among females
+* `reprovarm=1` Controls the heterogeneity in reproductive success among males
+* `K = 200` Controls the carrying capacity of the population
+* `VP=2` Phenotypic variance in the trait $z$
+* `VA=1` Additive genetic variance in the trait $z$
+* `agingF = aging` A function describing senescence (see below)
+* `theta=0` The optimal phenotype (either one value for all years, or a vector of one value for each year)
+* `omega=1` The inverse strength of selection (see below)
+
+You may not need to change the parameters, except for `theta` which will let you control the effect of environmental change on selection.  
+
+# Small introduction to the simulations
+
+The simulation model is quite similar to the one in Lyberger et al. 2021.
+
+You have a population of size N_0, with a phenotype $z$, the phenotype is under viability stabilizing selection. The phenotype does not affect reproduction, but reproduction is competitive. There is some kind of population regulation limiting the number of babies, so that you cannot get infinite population growth.  You start the simulation with some generations in a stable environment, in order to reach a demographic equilibrium (the population should start at evolutionary equilibrium) and then you can introduce some environmental change affecting the phenotypic optimum.
+
+I did not like the idea of a strict carrying capacity, so instead, when the population overshoots $K$, there is a stochastic reduction in reproduction output. In general the population size can fluctuate a little bit over $K$.
+
+I did not like the idea that some individuals may live for the entire duration of the simulation, so I added senescence to the simulation: as individuals age, their maximal survival probability decreases. I have used this aging function, where the maximal possible survival probability for at age $A$ is:
+
+$$
+m_A = 1/(1+\exp(-(\log \left( \frac{m_0}{1-m_0} \right) - 0.1*A^{1.4}) ) )
+$$
+where $m_0$ is the maximal survival probability at age 0 and is set to 0.8.
+The function looks like this:
+```{r}
+plot(x=0:20, y=aging(age=0:20), xlab="age", ylab = "Maximum survival probability")
+```
+
+
+I used this survival probability function to model selection on the phenotype $z$:
+
+$$
+w_z = m_A \exp \left(\frac{-(\theta - z)^2}{2\omega^2 } \right)
+$$
+$w_z$ is the real survival probability of an individual of phenotype $z$ and of age $A$. If the phenotype is equal to the optimum phenotype $\theta$, then $w_z=m_A$. The spread of the function is set by $\omega$ and determines how fast survival probability declines as the phenotypes gets far from the optimum.
+
+The function looks like this:
+```{r}
+plot(seq(-5,5,length=100), 
+     survfuction(z = seq(-5,5,length=100), theta = 0, omega = 1),
+     type="l", xlab="Phenotype", ylab="Annual survival probability (as a proportion of the maximum)")
+```
+
+
+
+## Test a stable environment simulation
+
+```{r}
+pop <- main_simul(start = 1980, end = 2021)
+```
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+```
+
+
+Evolution:
+```{r}
+plot(pop$birthyear, pop$a, pch=16, col=adjustcolor(col = "darkgrey", 
+                                                   alpha.f = 0.5),
+     xlab = "Cohort", ylab = "Breeding value")
+abline(h=0)
+points(x=unique(pop$birthyear), tapply(pop$a, pop$birthyear, mean), col="red")
+
+```
+
+
+## Let's relax stabilizing selection
+
+We expect a larger carrying capacity and more genetic drift. 
+
+```{r}
+pop <- main_simul(start = 1980, end = 2021, omega = 5)
+```
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+```
+
+Evolution:
+```{r}
+plot(pop$birthyear, pop$a, pch=16, col=adjustcolor(col = "darkgrey", 
+                                                   alpha.f = 0.5),
+     xlab = "Cohort", ylab = "Breeding value")
+abline(h=0)
+points(x=unique(pop$birthyear), tapply(pop$a, pop$birthyear, mean), col="red")
+
+```
+
+# Changing environment
+Now we add a changing environment. 
+
+## One single extreme event
+
+The optimal phenotype is 0, except on one year where it is 2. 
+
+```{r}
+start = 1980
+end = 2021
+optimalvalues <- data.frame(year = start:end,
+                            theta= c(rep(0, times=floor((end - start)/2) ), 
+                                     2,
+                                     rep(0, times=end - start - floor((end - start)/2))))
+plot(optimalvalues)
+
+```
+
+
+```{r}
+pop <- main_simul(start = 1980, end = 2021, theta = optimalvalues$theta)
+
+```
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(x=popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+abline(v=optimalvalues$year[optimalvalues$theta>0])
+```
+We can see clearly the population crash following the extreme event.
+
+Evolution:
+```{r}
+plot(pop$birthyear, pop$a, pch=16, col=adjustcolor(col = "darkgrey", 
+                                                   alpha.f = 0.5),
+     xlab = "Cohort", ylab = "Breeding value")
+abline(h=0)
+points(x=unique(pop$birthyear), tapply(pop$a, pop$birthyear, mean), col="red")
+abline(v=optimalvalues$year[optimalvalues$theta>0])
+```
+In terms of evolution the change following the extreme event was small but probably larger than expected due to drift. Evolution reverted back to the previous optimum.
+
+### What happens without evolution?
+
+```{r}
+pop <- main_simul(start = 1980, end = 2021, theta = optimalvalues$theta, VA = 0)
+```
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(x=popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+abline(v=optimalvalues$year[optimalvalues$theta>0])
+```
+We can see clearly the population crash following the extreme event, but it looks less pronounced than with evolution, exactly as described in Lyberger et al. 2021.
+
+## Permanent change in the environment
+The optimal phenotype is 0 for the first half, then swap to 2.
+
+```{r}
+start = 1980
+end = 2021
+optimalvalues <- data.frame(year = start:end,
+                            theta= c(rep(0, times=floor((end - start)/2) ),
+                                     rep(2, times=1+end - start - floor((end - start)/2))))
+plot(optimalvalues)
+```
+
+
+```{r}
+pop <- main_simul(start = 1980, end = 2021, theta = optimalvalues$theta)
+```
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(x=popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+```
+
+Here we see an longer lasting demographic cost of the optimum change, but the population recovers in about 10 years.
+
+Evolution:
+```{r}
+plot(pop$birthyear, pop$a, pch=16, col=adjustcolor(col = "darkgrey", 
+                                                   alpha.f = 0.5),
+     xlab = "Cohort", ylab = "Breeding value")
+points(x=unique(pop$birthyear), tapply(pop$a, pop$birthyear, mean), col="red")
+abline(h=c(0,2))
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+
+```
+
+### What happens in the absence of evolution?
+
+```{r}
+pop <- main_simul(start = 1980, end = 2021, theta = optimalvalues$theta, VA = 0)
+```
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(x=popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+```
+
+Not looking good for that population!
+
+## Introducing a continuous change in the environment
+
+```{r}
+start = 1980
+end = 2100
+change = 2000
+optimalvalues <- data.frame(year = start:end,
+                            theta= c(rep(0, times=change - start),
+                                     seq(from=0, to=16, length = 1+end - change)))
+plot(optimalvalues)
+```
+
+```{r}
+pop <- main_simul(start = start, end = end, theta = optimalvalues$theta)
+```
+
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(x=popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+```
+
+The population does okay but never reaches the early size again.
+
+Evolution:
+```{r}
+plot(pop$birthyear, pop$a, pch=16, col=adjustcolor(col = "darkgrey", 
+                                                   alpha.f = 0.5),
+     xlab = "Cohort", ylab = "Breeding value")
+points(x=unique(pop$birthyear), tapply(pop$a, pop$birthyear, mean), col="red")
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+lines(optimalvalues)
+```
+
+You can see the adaptive lag: the average breeding value is always below the optimum. 
+
+## Fluctuations on top of a continuous change in the environment
+
+
+```{r}
+start = 1980
+end = 2100
+change = 2000
+
+fluctu  <-  as.numeric(arima.sim(list(order = c(1,0,0), ar = 0.8), n = 1 + end - change))
+fluctu <- fluctu - fluctu[1]
+
+optimalvalues <- data.frame(year = start:end,
+                            theta= c(rep(0, times=change - start),
+                                     seq(from=0, to=8, length = 1 + end - change)+fluctu) )
+
+
+plot(optimalvalues, type="l")
+```
+
+
+```{r}
+pop <- main_simul(start = start, end = end, theta = optimalvalues$theta)
+```
+
+
+Demography:
+```{r}
+popsizes <- produce_pop_data(pop)
+plot(x=popsizes, ylim=c(0,max(popsizes$Freq)), ylab="Population size")
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+```
+
+Evolution:
+```{r}
+plot(pop$birthyear, pop$a, pch=16, col=adjustcolor(col = "darkgrey", 
+                                                   alpha.f = 0.5),
+     xlab = "Cohort", ylab = "Breeding value")
+points(x=unique(pop$birthyear), tapply(pop$a, pop$birthyear, mean), col="red")
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+lines(optimalvalues)
+```
+
+# Try to model data 
+
+We go back to the simple case with a permanent change in the environment.
+
+```{r}
+start = 1980
+end = 2001
+optimalvalues <- data.frame(year = start:end,
+                            theta= c(rep(0, times=floor((end - start)/2) ),
+                                     rep(2, times=1+end - start - floor((end - start)/2))))
+plot(optimalvalues)
+```
+
+
+```{r}
+pop <- main_simul(start = start, end = end, theta = optimalvalues$theta)
+```
+
+Let's visualise realized evolution:
+```{r}
+plot(pop$birthyear, pop$a, pch=16, col=adjustcolor(col = "darkgrey", 
+                                                   alpha.f = 0.5),
+     xlab = "Cohort", ylab = "Breeding value")
+points(x=unique(pop$birthyear), tapply(pop$a, pop$birthyear, mean), col="red")
+abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
+lines(optimalvalues)
+```
+
+
+
+```{r}
+ped <- pop[,c("id", "dam", "sire")]
+drawPedigree(ped)
+Ainv <- inverseA(ped)
+```
+
+We don't run the following because it takes a minute:
+```{r, eval=FALSE}
+m0 <- MCMCglmm(z ~ 1 + birthyear, 
+         random = ~ id,
+         ginverse = list(id=Ainv$Ainv),
+         data = pop, pr = TRUE)
+save(m0, file="RunModels/m0")
+```
+
+```{r}
+load("RunModels/m0")
+summary(m0)
+plot(m0)
+```
+
+Let's compute the heritability
+```{r}
+h2 <- m0$VCV[,"id"]/(m0$VCV[,"id"]+m0$VCV[,"units"])
+plot(h2)
+posterior.mode(h2)
+HPDinterval(h2)
+```
+
+
+We extract the estimated breeding values:
+
+```{r}
+est_breeding_values <- m0$Sol[,grepl(pattern = "id", colnames(m0$Sol))] #grepl finds the columns where breeding values are stored
+```
+
+We can look at the posterior mean of each individual to get a first look:
+```{r}
+ind_bv_means <- apply(est_breeding_values, 2, mean)
+```
+
+Let's see how the estimated breeding values relate to the true breeding values:
+```{r}
+plot(pop$a, ind_bv_means)
+
+```
+
+And let's see if we pick up evolution:
+```{r}
+plot(pop$birthyear, ind_bv_means)
+
+```
+Yes.
+

@@ -1,5 +1,6 @@
-InitialisePopulation <- function(nind=100, VA=1, VE=1, year=1980)
+InitialisePopulation <- function(nind=100, VA=1, VP=2, year=1980)
 {
+  VE <- VP-VA
   pop <- data.frame(id=1:nind, sex=c(rep("F", times=round(nind/2)),
                               rep("M", times=nind - round(nind/2))),
                     birthyear = year,
@@ -19,10 +20,15 @@ survfuction <- function(z=0, theta=0, omega=1) {
 }
 
 RunPopulation <- function(start=1980, end=2000, maturity=1,
-                          baserepro=2, reprovarf=1, reprovarm=1, K = 200, VE=1, VA=1,
-                          maxsurvp = 0.8, theta=0, omega=1,
+                          baserepro=2, reprovarf=1, reprovarm=1, K = 200, VP=2, VA=1,
+                          maxsurvp = 0.8, theta=0, omega=1, agingF=aging,
                           pop) 
 {
+  VE <- VP-VA
+  
+  ages <- data.frame(age=0:(end-start+1), 
+                     p=sapply(0:(end-start+1), aging))
+  
   if(length(theta)==1)
   {
     theta <- rep(theta, times = end-start + 1)
@@ -78,7 +84,7 @@ RunPopulation <- function(start=1980, end=2000, maturity=1,
     # viability selection
     survivors <- rbinom(n = sum(pop$alive), 
            size = 1,
-           prob = maxsurvp*survfuction(pop$z[pop$alive==1],
+           prob = ages$p[1 + year - pop$birthyear[pop$alive==1]]*survfuction(pop$z[pop$alive==1],
                                        theta = theta[year - start + 1],
                                        omega = omega))
     
@@ -98,19 +104,42 @@ RunPopulation <- function(start=1980, end=2000, maturity=1,
   return(pop)
 }#end PreEventYears()
 
+aging <- function(age){
+  plogis(log(0.8/(1-0.8)) - 0.1*age^(1.4))
+}#aging
 
-main_simul <- function(start=1980, end=2000, maturity=1,
-                       baserepro=2, reprovarf=1, reprovarm=1, K = 200, VE=1, VA=1,
-                       maxsurvp = 0.8, theta=0, omega=1){
+main_simul <- function(start=1980, end=2000, maturity=1, 
+                       baserepro=2, reprovarf=1, reprovarm=1, K = 200, VP=2, VA=1,
+                       agingF = aging,
+                       theta=0, omega=1){
   
-  pop <- InitialisePopulation(nind = 100, VA = VA, VE = VE, year = start)
+  if(VP<VA){stop("Phenotypic variance cannot be less than additive genetic variance. Adjust VP and VA.")}
+  
+  pop <- InitialisePopulation(nind = 100, VA = VA, VP = VP, year = start)
   pop <- RunPopulation(pop = pop, start=start, end=end, maturity = maturity, 
                        baserepro = baserepro, reprovarf = reprovarf, reprovarm = reprovarm,
-                       K = K, VE=VE, VA=VA,
-                       maxsurvp = maxsurvp, theta=theta, omega=omega)
+                       K = K, VP=VP, VA=VA, agingF=agingF,
+                       theta=theta, omega=omega)
+  pop <- add_repro(pop)
   return(pop)
 }
-  
+
+add_repro <- function(pop)  
+{
+  pop$repro <- 0
+  pop2 <- pop[!is.na(pop$dam) & !is.na(pop$sire),]
+  for (i in 1:nrow(pop))
+  {
+    if(pop$sex[i]=="F")
+      {
+      pop$repro[i] <- nrow(pop2[pop2$dam==pop$id[i],])
+    }else{
+      pop$repro[i] <- nrow(pop2[pop2$sire==pop$id[i],])
+      }
+  }
+  return(pop)
+}#end add_repro()
+
 produce_pop_data <- function(pop)
 {
   years <- vector()
@@ -119,5 +148,20 @@ produce_pop_data <- function(pop)
   {
     years <- c(years, pop$birthyear[i]:pop$deathyear[i])
   }
-  return(as.data.frame(table(years)))
+  popsizes <- as.data.frame(table(years))
+  popsizes$years <- as.numeric(as.character(popsizes$years))
+  return(popsizes)
+}#end produce_pop_data
+
+
+produce_ind_data <- function(pop)
+{
+  pop$deathyear[is.na(pop$deathyear)] <- max(pop$birthyear)
+  nbrecords <- pop$deathyear - pop$birthyear + 1
+  cumrecords <- cumsum(nbrecords)
+  inddata <- data.frame(obs = 1: sum(nbrecords), id=NA, sex=NA, z=NA, cohort=NA, a=NA) 
+  for (i in 1:nrow(pop))
+  {
+    inddata  
+  }
 }

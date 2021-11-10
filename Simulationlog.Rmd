@@ -1,0 +1,24 @@
+---
+title: "Simulation log"
+author: "Timothee Bonnet"
+date: "10/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+source("FunctionSimuls.R")
+```
+
+
+# First simple dataset
+
+```{r}
+set.seed(1234)
+pop <- main_simul(start = 1980, end = 2001)
+write.csv(x = pop, file = "SimulatedData/FirstSimpleDataset.csv", quote = FALSE, row.names = FALSE)
+```
+

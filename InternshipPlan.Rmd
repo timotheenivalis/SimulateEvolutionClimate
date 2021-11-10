@@ -1,0 +1,42 @@
+---
+title: "Internship plan"
+author: "Timothee Bonnet"
+date: "10/11/2021"
+output: html_document
+---
+
+The (ambitious) goals of the internship as I currently see them:
+
+* Test how well animal models can detect fluctuations in selection and evolution due to changing environmental conditions; both using simple scenarios and realistic scenarios of climatic change and fluctuations.
+* Clarify how to interpret animal models implementations of the first and secondary theorem of selection when selection is fluctuating.
+* Compare the performance of different types of animal models (BLUP analysis vs. first and secondary theorem of selection).
+* (Perhaps: Create better animal models which allow more flexible implementations of the first theorem of selection.)
+
+
+First steps:
+
+* If you get access to RSB building, do inductions
+* Check you are set up to work with recent versions of R and Rstudio
+* Install those R-packages: MCMCglmm, pedantics, tidyverse, knitr. Also try to install brms, but that one can be tricky, so don't worry if it does not work for now.
+* As much as possible, it would be good if you could document your work using R-markdown. R-markdown is a very simple mark-up language that let's you make documents (docx, html or pdf) mixed with R code, from RStudio. If you do not know R-markdown you could look at the recording of a workshop I did on the topic (the first workshop listed on https://bdsi.anu.edu.au/training-courses/tools-reproducible-science) and code along. (*NB: This document is made in Rmarkdown*)
+* It is not as essential, but it would be good if we could collaborate via GitHub. Set up a Github account and learn a bit about Git (for instance have a look at https://guides.github.com/introduction/git-handbook/). You could use the RStudio Git interface, or install GitHub Desktop, or use the command line if you prefer.
+* You are going to use a lot of mixed effect models, so I recommend you go through some workshops about them; I can suggest mine (the workshops "Variance structure and introduction to random effects" and "Random effects and mixed models in lme4" at https://bdsi.anu.edu.au/training-courses/statistical-modelling-mixed-models-glms-r) but feel free to use different material if you get tired of my accent!
+
+Now, actually starting the project work:
+
+1. Analysing a simulated dataset of a population in a stable environment (there is an example of a similar analysis at the end of `TestSimulations.Rmd`). The data are in `SimulatedData/FirstSimpleDataset.csv`:
+  1. Fit a linear model of the phenotype $z$ with fixed effects such as birthyear and sex, using the package MCMCglmm
+  2. Fit an animal model of the phenotype $z$ using the package MCMCglmm
+  3. Calculate the heritability of $z$
+  4. Refit the model with the option `PR=TRUE`
+  5. Extract estimated breeding values
+  6. Plot estimated breeding values against birthyear
+  7. Compare the estimated breeding values to the true breeding values (the column $a$ in the dataset)
+2. Have a look at what the simulations do (`TestSimulations.Rmd`). Your project will be focussed on analysing the data, not producing them, but still it should be informative for you to know how the data are made and what data can be generated. You can play with the simulations if you want (and see if you can break my code).
+3. Think about how you could generate several datasets for a given environmental scenario and analyse them all.
+
+A bit of reading:
+
+* Some stuff about evolutionary rescue. Gonzales et al. Evolutionary rescue: an emerging focus at the intersection between ecology and evolution.
+* An empirical study of changes in the dynamics of breeding values in a wild population. Pigeon et al. Intense selective hunting leads to artificial evolution in horn size
+
