@@ -165,3 +165,18 @@ produce_ind_data <- function(pop)
     inddata  
   }
 }
+
+# Dan's function for somewhat autocorrelated fluctuations
+fluctuation <- function(n, trend)
+{
+  for (i in 1:n)
+    if (i==1) {
+      fluctu_vec <- c(0)
+    } else {
+    y = fluctu_vec[i - 1] + trend[2] + rnorm(1, 0, 0.3)
+    fluctu_vec <- append(fluctu_vec, y)
+  }
+  return (fluctu_vec)
+} # End fluctuation
+
+                   
