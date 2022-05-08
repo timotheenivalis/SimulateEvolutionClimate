@@ -313,7 +313,7 @@ abline(v=optimalvalues$year[min(which(optimalvalues$theta>0))])
 lines(optimalvalues)
 ```
 
-# Try to model data 
+# Try to model data
 
 We go back to the simple case with a permanent change in the environment.
 

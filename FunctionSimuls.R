@@ -43,7 +43,7 @@ RunPopulation <- function(start=1980, end=2000, maturity=1,
     
     offsp <- rpois(length(adultfemales),
                    lambda = exp(log(baserepro) + rnorm(length(adultfemales), 0, sqrt(reprovarf))) )
-    # regulation by reproduction limitation, with random componant
+    # regulation by reproduction limitation, with random component
     if(sum(offsp)+sum(pop$alive) > K)
     {
       p <- K/(sum(offsp)+sum(pop$alive))
