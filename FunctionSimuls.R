@@ -15,6 +15,7 @@ InitialisePopulation <- function(nind=100, VA=1, VP=2, year=1980)
   return(pop)
 }#end InitialisePopulation()
 
+## CHANGE THIS TO PERFORMANCE CURVE DAN N. 
 survfuction <- function(z=0, theta=0, omega=1) {
   exp( (-(theta - z)^2) / (2*(omega^2) ) )
 }
@@ -86,7 +87,8 @@ RunPopulation <- function(start=1980, end=2000, maturity=1,
            size = 1,
            prob = ages$p[1 + year - pop$birthyear[pop$alive==1]]*survfuction(pop$z[pop$alive==1],
                                        theta = theta[year - start + 1],
-                                       omega = omega))
+                                       omega = omega)) 
+    ## CHANGE THIS TO PERFORMANCE CURVE DAN N. AGE probability of survival is multiplied by trait survival and this gives overall probability of survival
     
     sexofsurvivors <- pop$sex[pop$alive==1][which(survivors==1)]
     
